@@ -1,2 +1,4 @@
 configuration.toml
 .ipynb_checkpoints
+
+.DS_Store
