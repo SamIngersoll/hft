@@ -2,13 +2,14 @@
 
 ## TODOS
 
-- Buy a coin through API (to test functionality)
+- ~~Buy a coin through API (to test functionality)~~ Done
 - Set up automatic order creation.
     - For both buy and sell,
         - Choose amount that we want to trade
         - Confirm that it conforms to the coin's filters
-        - If it doesn't, modify the order so it does
+        - If it doesn't, modify the order so it does (how?)
     - Decide on order type (e.g. Limit vs. Market)
+        - FOR NOW, MARKET ORDER IS THE WAY - depending on state of system, try limit
         - Limit Order: Create a bid/ask, someone else fills it
             - No/Reduced fees since we would be "market makers"
             - No garuntee of the order filling. Therefore, would have to figure out contingencies for this case, and price our bid/ask such that there will be a high probability of the order actually filling (i.e. maybe 99% of the best bid/ask? this could be tested w/ small orders)
