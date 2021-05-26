@@ -1,6 +1,7 @@
 import numpy as np
 
 from enum import Enum
+from multiprocessing import Pool
 from typing import List, Tuple, Optional
 
 
@@ -10,6 +11,7 @@ class EMA_trader:
     Why even have a class for this?
     - Easier management of previous EMA values, prices values, e.t.c.
     """
+
     class OrderSide(Enum):
         BUY = 1
         SELL = 2
@@ -98,68 +100,107 @@ class EMA_trader:
         """
         Optimizes ema params over prices
         """
-        best_score = 0
-
-        best_ema_smoothing_const_1 = 0
-        best_period_range_1 = 0
-        best_ema_smoothing_const_2 = 0
-        best_period_range_2 = 0
-
-        prev_price, *prices = prices
-
         for j in range(10):
-            for k in range(10):
-                for l in range(10):
-                    for m in range(10):
-                        base = 100
-                        quote = 0
+            best_score, (
+                best_ema_smoothing_const_1,
+                best_period_range_1,
+                best_ema_smoothing_const_2,
+                best_period_range_2,
+            ) = _optimize_given_j(j, prices)
 
-                        d1 = j
-                        d2 = k
-                        ema_smoothing_const_1 = l / 10
-                        ema_smoothing_const_2 = m / 10
-
-                        prev_ema1 = prev_price
-                        prev_ema2 = prev_price
-
-                        for i, price in enumerate(prices):
-
-                            # trading logic
-                            ema1 = self.ema(price, prev_ema1, ema_smoothing_const_1, d1)
-                            ema2 = self.ema(price, prev_ema2, ema_smoothing_const_2, d2)
-
-                            percent_change = (price - prev_price) / prev_price
-                            quote *= 1 + percent_change
-
-                            if ema1 > ema2:
-                                # buy
-                                if base > 0:
-                                    quote += 0.999 * base
-                                    base = 0
-                            elif ema2 > ema1:
-                                # sell
-                                if quote > 0:
-                                    base += 0.999 * quote
-                                    quote = 0
-
-                            prev_price = price
-
-                        if quote + base > best_score:
-                            best_score = quote + base
-                            best_period_range_1 = d1
-                            best_period_range_2 = d2
-                            best_ema_smoothing_const_1 = ema_smoothing_const_1
-                            best_ema_smoothing_const_2 = ema_smoothing_const_2
-
-        print(f"{best_score:.3f}", (
-            best_ema_smoothing_const_1,
-            best_period_range_1,
-            best_ema_smoothing_const_2,
-            best_period_range_2,
-        ))
+        print(
+            f"{best_score:.3f}",
+            (
+                best_ema_smoothing_const_1,
+                best_period_range_1,
+                best_ema_smoothing_const_2,
+                best_period_range_2,
+            ),
+        )
         return (
             best_ema_smoothing_const_1,
             best_period_range_1,
             best_ema_smoothing_const_2,
             best_period_range_2,
         )
+
+    def optimize_threaded(self, prices: np.array):
+        """
+        Optimizes ema params over prices
+        """
+        with Pool(10) as p:
+            best_score, best_params = max(
+                p.starmap(_optimize_given_j, zip(range(10), [prices] * 10))
+            )
+            print(f"{best_score:.3f}", best_params)
+            return best_params
+
+
+def _optimize_given_j(j, prices):
+    def ema(
+        cur_price: float,
+        prev_ema: float,
+        ema_smoothing_const: float,
+        period_range: int,
+    ):
+        return cur_price * ema_smoothing_const / (1 + period_range) + prev_ema * (
+            1 - ema_smoothing_const / (1 + period_range)
+        )
+
+    best_score = 0
+
+    best_ema_smoothing_const_1 = 0
+    best_period_range_1 = 0
+    best_ema_smoothing_const_2 = 0
+    best_period_range_2 = 0
+
+    prev_price, *prices = prices
+    for k in range(10):
+        for l in range(10):
+            for m in range(10):
+                base = 100
+                quote = 0
+
+                d1 = j
+                d2 = k
+                ema_smoothing_const_1 = l / 10
+                ema_smoothing_const_2 = m / 10
+
+                prev_ema1 = prev_price
+                prev_ema2 = prev_price
+
+                for i, price in enumerate(prices):
+
+                    # trading logic
+                    ema1 = ema(price, prev_ema1, ema_smoothing_const_1, d1)
+                    ema2 = ema(price, prev_ema2, ema_smoothing_const_2, d2)
+
+                    percent_change = (price - prev_price) / prev_price
+                    quote *= 1 + percent_change
+
+                    if ema2 > ema1:
+                        # buy
+                        if base > 0:
+                            quote += 0.999 * base
+                            base = 0
+                    elif ema1 < ema2:
+                        # sell
+                        if quote > 0:
+                            base += 0.999 * quote
+                            quote = 0
+
+                    prev_price = price
+
+                if quote + base > best_score:
+                    best_score = quote + base
+                    best_period_range_1 = d1
+                    best_period_range_2 = d2
+                    best_ema_smoothing_const_1 = ema_smoothing_const_1
+                    best_ema_smoothing_const_2 = ema_smoothing_const_2
+
+    return best_score, (
+        best_ema_smoothing_const_1,
+        best_period_range_1,
+        best_ema_smoothing_const_2,
+        best_period_range_2,
+    )
