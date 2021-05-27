@@ -1,7 +1,7 @@
 import numpy as np
+import multiprocessing
 
 from enum import Enum
-from multiprocessing import Pool
 from typing import List, Tuple, Optional
 
 
@@ -29,6 +29,7 @@ class EMA_trader:
         self.period_range_2: int = period_range - 1
         self._prev_ema_val_1: Optional[float] = None  # default initial EMA value to 0
         self._prev_ema_val_2: Optional[float] = None  # default initial EMA value to 0
+        self._pool = multiprocessing.Pool(multiprocessing.cpu_count() - 1)
 
     def ema(
         self,
@@ -91,52 +92,62 @@ class EMA_trader:
         ema_smoothing_const_2: int,
         period_range_2: int,
     ):
+        print(
+            f"New Params: {ema_smoothing_const_1} {period_range_1} {ema_smoothing_const_1} {period_range_2}"
+        )
         self.ema_smoothing_const_1: float = ema_smoothing_const_1
         self.ema_smoothing_const_2: float = ema_smoothing_const_2
         self.period_range_1: float = period_range_1
         self.period_range_2: float = period_range_2
 
-    def optimize(self, prices: np.array):
+    def optimize(self, prices: np.array, ema_const_range: int = 10):
         """
         Optimizes ema params over prices
         """
-        for j in range(10):
-            best_score, (
-                best_ema_smoothing_const_1,
-                best_period_range_1,
-                best_ema_smoothing_const_2,
-                best_period_range_2,
-            ) = _optimize_given_j(j, prices)
+        for j in range(ema_const_range):
+            _, parameters = _optimize_given_j(j, prices, ema_const_range)
 
-        print(
-            f"{best_score:.3f}",
-            (
-                best_ema_smoothing_const_1,
-                best_period_range_1,
-                best_ema_smoothing_const_2,
-                best_period_range_2,
-            ),
-        )
-        return (
-            best_ema_smoothing_const_1,
-            best_period_range_1,
-            best_ema_smoothing_const_2,
-            best_period_range_2,
-        )
+        return parameters
 
-    def optimize_threaded(self, prices: np.array):
+    def optimize_multiprocess(self, prices: np.array, ema_const_range: int = 10):
         """
         Optimizes ema params over prices
         """
-        with Pool(10) as p:
+        num_cores = multiprocessing.cpu_count()
+        with multiprocessing.Pool(num_cores) as p:
             best_score, best_params = max(
-                p.starmap(_optimize_given_j, zip(range(10), [prices] * 10))
+                p.starmap(  # can also use starmap_async so the main process doesnt have to halt to wait for a result
+                    _optimize_given_j,
+                    zip(
+                        range(ema_const_range),
+                        [prices] * ema_const_range,
+                        [ema_const_range] * ema_const_range,
+                    ),
+                )
             )
-            print(f"{best_score:.3f}", best_params)
             return best_params
 
+    def optimize_multiprocess_async(self, prices: np.array, ema_const_range: int = 10):
+        """
+        Optimizes ema params over prices,
+        """
 
-def _optimize_given_j(j, prices):
+        def cb(results):
+            best_score, best_params = max(results)
+            self.set_params(*best_params)
+
+        self._pool.starmap_async(
+            _optimize_given_j,
+            zip(
+                range(ema_const_range),
+                [prices] * ema_const_range,
+                [ema_const_range] * ema_const_range,
+            ),
+            callback=cb,
+        )
+
+
+def _optimize_given_j(j: int, prices: list, ema_const_range: int = 10):
     def ema(
         cur_price: float,
         prev_ema: float,
