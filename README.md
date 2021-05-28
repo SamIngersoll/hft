@@ -1,5 +1,22 @@
 # hft
 
+
+## Structure
+
+How I view the structure:
+
+```
+Order Websocket --> Trader --> Strategy
+^                     ^           ^
+| Binance websocket   | Takes websocket, prepares/feeds data to strategy,
+					  | takes order instructions from strategy (e.g. buy/sell)
+					  | and executes orders
+								  |
+								  | Takes datastream via `trade` method, and for
+								  | each execution, it returns "Orderside.BUY",
+								  | "Orderside.SELL", or "Orderside.NO_OP"
+```
+
 ## TODOS
 
 - ~~Buy a coin through API (to test functionality)~~ Done
