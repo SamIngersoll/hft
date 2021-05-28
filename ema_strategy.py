@@ -87,10 +87,13 @@ class EMA_strategy:
         period_range_1: float,
         ema_smoothing_const_2: int,
         period_range_2: int,
+        best_score: Optional[float] = None,
     ):
-        print(
-            f"SET PARAMS: {ema_smoothing_const_1} {period_range_1} {ema_smoothing_const_1} {period_range_2}"
-        )
+        print_str = f"SET PARAMS: {ema_smoothing_const_1} {period_range_1} {ema_smoothing_const_1} {period_range_2}"
+        if best_score is not None:
+            print_str += f"SCORE: {best_score}"
+        print(print_str)
+
         self.ema_smoothing_const_1: float = ema_smoothing_const_1
         self.ema_smoothing_const_2: float = ema_smoothing_const_2
         self.period_range_1: float = period_range_1
@@ -136,7 +139,7 @@ class EMA_strategy:
 
         def cb(results):
             best_score, best_params = max(results)
-            self.set_params(*best_params)
+            self.set_params(*best_params, best_score=best_score)
 
         def err_cb(err):
             return
@@ -149,7 +152,7 @@ class EMA_strategy:
                 [ema_const_range] * ema_const_range,
             ),
             callback=cb,
-            error_callback=err_cb
+            error_callback=err_cb,
         )
 
 

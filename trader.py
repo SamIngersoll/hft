@@ -3,14 +3,14 @@ from ema_strategy import EMA_strategy
 
 
 class Trader:
-    def __init__(self, async_optimization=False):
+    def __init__(self, optimization_period=5000, async_optimization=False):
         self.base_arr = []
         self.quote_arr = []
         self.price_history = []
         self.base = 1
         self.quote = 0
         self.tr = EMA_strategy()
-        self.optimization_period = 5000
+        self.optimization_period = optimization_period
         self.optimize_async_result = None
         self.num_buys = 0
         self.num_sells = 0
@@ -64,9 +64,6 @@ class Trader:
                 self.tr.optimize_multiprocess(
                     self.price_history[-self.optimization_period : -1]
                 )
-            print(
-                f"base: {self.base}\tquote: {self.quote}\tNUM BUYS: {self.num_buys}\tNUM SELLS: {self.num_sells}"
-            )
 
         if traded:
             return action
