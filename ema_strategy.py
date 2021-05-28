@@ -91,7 +91,7 @@ class EMA_strategy:
     ):
         print_str = f"SET PARAMS: {ema_smoothing_const_1} {period_range_1} {ema_smoothing_const_1} {period_range_2}"
         if best_score is not None:
-            print_str += f"SCORE: {best_score}"
+            print_str += f"\nSCORE: {best_score}"
         print(print_str)
 
         self.ema_smoothing_const_1: float = ema_smoothing_const_1
@@ -178,7 +178,7 @@ def _optimize_given_j(j: int, prices: list, ema_const_range: int = 10):
     for k in range(10):
         for l in range(10):
             for m in range(10):
-                base = 100
+                base = 1
                 quote = 0
 
                 d1 = j
