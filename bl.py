@@ -73,7 +73,7 @@ if __name__ == "__main__":  # everything in main block due to multiprocessing er
         if res.lower() == "y":
             datestamp = time.ctime().replace(" ", "_")
             np.save(
-                f"price_history/price_data_{datestamp}_{len(t.price_history)}s",
+                f"price_history/{symbol}_{datestamp}_{len(t.price_history)}s",
                 np.asarray(t.price_history),
             )
 
