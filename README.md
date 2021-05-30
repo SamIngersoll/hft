@@ -2,9 +2,6 @@
 
 
 ## Structure
-
-How I view the structure:
-
 ```
 -----------------+
 Binance Websocket| --> Trader --> Strategy
