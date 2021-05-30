@@ -40,7 +40,7 @@ if __name__ == "__main__":  # everything in main block due to multiprocessing er
 
     t = Trader(async_optimization=True, optimization_period=args.o)
 
-    cfg = toml.load("api/configuration.toml")
+    cfg = toml.load("../api/configuration.toml")
     pkey = cfg["auth"]["pkey"]
     skey = cfg["auth"]["skey"]
 
