@@ -6,21 +6,31 @@
 How I view the structure:
 
 ```
-Order Websocket --> Trader --> Strategy
-^                     ^           ^
-| Binance websocket   | Takes websocket, prepares/feeds data to strategy,
-					  | takes order instructions from strategy (e.g. buy/sell)
-					  | and executes orders
-								  | Takes datastream via `trade` method, and for
-								  | each execution, it returns "Orderside.BUY",
-								  | "Orderside.SELL", or "Orderside.NO_OP"
+-----------------+
+Binance Websocket| --> Trader --> Strategy
+-----------------+        ^           ^
+						  | Takes websocket, prepares/feeds data to strategy,
+						  | takes order instructions from strategy (e.g. buy/sell)
+						  | and executes orders
+									  | Takes datastream via `trade` method, and for
+									  | each execution, it returns "Orderside.BUY",
+									  | "Orderside.SELL", or "Orderside.NO_OP"
 ```
 
-Right now, it is not generalized/modularized. This would be a good step
+Right now, it is not generalized/modularized.
 
 ## TODOS
 
 - ~~Buy a coin through API (to test functionality)~~ Done
+- ~~Structure EMA algo to work w/ API stuff~~
+    - Dunno the best architecture here - prototype is working. I think a good goal would be to make it easy to quickly test with various parameters, strategies, e.t.c.
+	- bl.py 
+		- Sets up / handles websocket, executes orders, e.t.c.
+		- Would be good to have some sort of JSON/yaml config for trading strategies. e.g. the json config would specify stock, strategy parameters, and (stretch goal) stop-loss levels, configs for trading out of currencies, e.t.c.
+	- trader.py
+		- takes orders, handles optimization/training of strategies, e.t.c.
+	- ema\_strategy.py
+		- strategy for trading. actual trading logic is here
 - Set up automatic order creation.
     - For both buy and sell,
         - Choose amount that we want to trade
@@ -35,8 +45,6 @@ Right now, it is not generalized/modularized. This would be a good step
             - Fees since we would be "market takers"
             - "Slippage" can increase price / fees (if you order 100, but best limit order on market is for a quantity of 50, the rest of the order would be filled at the worse limit order prices)
             - Immediate filling would allow us to make more trades per unit time, potentially beating the fees / worse prices. Don't know of a way to evaluate this for certain other than raw testing.
-- Structure EMA algo to work w/ API stuff
-    - Dunno the best architecture here
 
 ## Limitations
 

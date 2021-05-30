@@ -175,9 +175,9 @@ def _optimize_given_j(j: int, prices: list, ema_const_range: int = 10):
     best_period_range_2 = 0
 
     prev_price, *prices = prices
-    for k in range(10):
-        for l in range(10):
-            for m in range(10):
+    for k in range(ema_const_range):
+        for l in range(ema_const_range):
+            for m in range(ema_const_range):
                 base = 1
                 quote = 0
 
