@@ -1,21 +1,17 @@
 import numpy as np
 import multiprocessing
 
-from enum import Enum
 from typing import List, Tuple, Optional
 
+from order_side import OrderSide
 
-class EMA_trader:
+
+class EMA_strategy:
     """Class to hold EMA trading logic
 
     Why even have a class for this?
     - Easier management of previous EMA values, prices values, e.t.c.
     """
-
-    class OrderSide(Enum):
-        BUY = 1
-        SELL = 2
-        NO_OP = 3
 
     def __init__(self, ema_smoothing_const: float = 0.1, period_range: int = 2):
         """
@@ -80,10 +76,10 @@ class EMA_trader:
         """
         ema1, ema2 = self.ema_pair(cur_price)
         if ema2 > ema1:
-            return self.OrderSide.BUY
+            return OrderSide.BUY
         elif ema1 > ema2:
-            return self.OrderSide.SELL
-        return self.OrderSide.NO_OP
+            return OrderSide.SELL
+        return OrderSide.NO_OP
 
     def set_params(
         self,
@@ -91,14 +87,25 @@ class EMA_trader:
         period_range_1: float,
         ema_smoothing_const_2: int,
         period_range_2: int,
+        best_score: Optional[float] = None,
     ):
-        print(
-            f"New Params: {ema_smoothing_const_1} {period_range_1} {ema_smoothing_const_1} {period_range_2}"
-        )
+        print_str = f"SET PARAMS: {ema_smoothing_const_1} {period_range_1} {ema_smoothing_const_1} {period_range_2}"
+        if best_score is not None:
+            print_str += f"\nSCORE: {best_score}"
+        print(print_str)
+
         self.ema_smoothing_const_1: float = ema_smoothing_const_1
         self.ema_smoothing_const_2: float = ema_smoothing_const_2
         self.period_range_1: float = period_range_1
         self.period_range_2: float = period_range_2
+
+    def get_params(self):
+        return (
+            self.ema_smoothing_const_1,
+            self.period_range_1,
+            self.ema_smoothing_const_2,
+            self.period_range_2,
+        )
 
     def optimize(self, prices: np.array, ema_const_range: int = 10):
         """
@@ -106,26 +113,24 @@ class EMA_trader:
         """
         for j in range(ema_const_range):
             _, parameters = _optimize_given_j(j, prices, ema_const_range)
-
-        return parameters
+        self.set_params(*parameters)
 
     def optimize_multiprocess(self, prices: np.array, ema_const_range: int = 10):
         """
         Optimizes ema params over prices
         """
         num_cores = multiprocessing.cpu_count()
-        with multiprocessing.Pool(num_cores) as p:
-            best_score, best_params = max(
-                p.starmap(  # can also use starmap_async so the main process doesnt have to halt to wait for a result
-                    _optimize_given_j,
-                    zip(
-                        range(ema_const_range),
-                        [prices] * ema_const_range,
-                        [ema_const_range] * ema_const_range,
-                    ),
-                )
+        best_score, best_params = max(
+            self._pool.starmap(
+                _optimize_given_j,
+                zip(
+                    range(ema_const_range),
+                    [prices] * ema_const_range,
+                    [ema_const_range] * ema_const_range,
+                ),
             )
-            return best_params
+        )
+        self.set_params(*best_params)
 
     def optimize_multiprocess_async(self, prices: np.array, ema_const_range: int = 10):
         """
@@ -134,9 +139,12 @@ class EMA_trader:
 
         def cb(results):
             best_score, best_params = max(results)
-            self.set_params(*best_params)
+            self.set_params(*best_params, best_score=best_score)
 
-        self._pool.starmap_async(
+        def err_cb(err):
+            return
+
+        return self._pool.starmap_async(
             _optimize_given_j,
             zip(
                 range(ema_const_range),
@@ -144,6 +152,7 @@ class EMA_trader:
                 [ema_const_range] * ema_const_range,
             ),
             callback=cb,
+            error_callback=err_cb,
         )
 
 
@@ -166,10 +175,10 @@ def _optimize_given_j(j: int, prices: list, ema_const_range: int = 10):
     best_period_range_2 = 0
 
     prev_price, *prices = prices
-    for k in range(10):
-        for l in range(10):
-            for m in range(10):
-                base = 100
+    for k in range(ema_const_range):
+        for l in range(ema_const_range):
+            for m in range(ema_const_range):
+                base = 1
                 quote = 0
 
                 d1 = j
