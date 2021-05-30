@@ -23,10 +23,10 @@ class Trader:
         elif len(self.price_history) == self.optimization_period:
             if self.async_optimization:
                 self.optimize_async_result = self.tr.optimize_multiprocess_async(
-                    self.price_history[:], ema_const_range=15
+                    self.price_history[:], ema_const_range=21
                 )
             else:
-                self.tr.optimize_multiprocess(self.price_history[:], ema_const_range=15)
+                self.tr.optimize_multiprocess(self.price_history[:], ema_const_range=21)
             return OrderSide.NO_OP
         elif self.async_optimization:
             if not self.optimize_async_result.ready():
