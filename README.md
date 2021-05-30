@@ -6,12 +6,12 @@
 -----------------+
 Binance Websocket| --> Trader --> Strategy
 -----------------+        ^           ^
-						  | Takes websocket, prepares/feeds data to strategy,
-						  | takes order instructions from strategy (e.g. buy/sell)
-						  | and executes orders
-									  | Takes datastream via `trade` method, and for
-									  | each execution, it returns "Orderside.BUY",
-									  | "Orderside.SELL", or "Orderside.NO_OP"
+                          | Takes websocket, prepares/feeds data to strategy,
+                          | takes order instructions from strategy (e.g. buy/sell)
+                          | and executes orders
+                                      | Takes datastream via `trade` method, and for
+                                      | each execution, it returns "Orderside.BUY",
+                                      | "Orderside.SELL", or "Orderside.NO_OP"
 ```
 
 Right now, it is not generalized/modularized.
