@@ -43,6 +43,12 @@ Right now, it is not generalized/modularized.
             - "Slippage" can increase price / fees (if you order 100, but best limit order on market is for a quantity of 50, the rest of the order would be filled at the worse limit order prices)
             - Immediate filling would allow us to make more trades per unit time, potentially beating the fees / worse prices. Don't know of a way to evaluate this for certain other than raw testing.
 
+## Characterization
+
+- How does return change as a function of the optimization window?
+- Does optimizing over multiple currencies improve results?
+
+
 ## Limitations
 
 - When trading on the DOGEBTC market, there is a min notional value required for the trade of 0.0001 BTC (~\$5.75 USD), the lot size for selling DOGE is 1 (i.e. can't sell fractional doge). This are limiting factors. Here are all the DOGEBTC filters:
