@@ -9,83 +9,141 @@
            /____/
 """
 
-
+import sys
 import argparse
 import time, toml
 import numpy as np
 
 from trader import Trader
 
+from binance.client import Client
 from binance import ThreadedWebsocketManager
 
 
 parser = argparse.ArgumentParser("beginner's luck")
 parser.add_argument(
-    "symbol",
-    metavar="symbol",
+    "-s",
+    metavar="--symbol",
     type=str,
-    help="ticker symbol - e.g. DOGEBTC. Note: does not error for invalid symbols",
+    help="ticker symbol (e.g. DOGEBTC) does not error for invalid symbols",
+    dest="symbol",
 )
 parser.add_argument(
-    "-p", metavar="--print_period", type=float, help="period between printing info to stdout [s]", default=60
+    "-f",
+    metavar="--file",
+    type=str,
+    help="path to .npy file - should be array of prices over time",
+    dest="file",
 )
 parser.add_argument(
-    "-o", metavar="--optimzation_period", type=int, help="number of prices over which we optimize [trades]", default=1000
+    "-p",
+    metavar="--print-period",
+    type=float,
+    help="period between printing info to stdout [s]",
+    default=60,
 )
+parser.add_argument(
+    "-o",
+    metavar="--optimzation-period",
+    type=int,
+    help="number of prices over which EMA is optimized",
+    default=1000,
+)
+# parser.add_argument(
+#     "-a",
+#     metavar="--async-optimization",
+#     type=bool,
+#     action="store_true",
+#     help="whether to use async or serial optimization - default is async for symbols (ie websockets) and serial for files",
+# )
 
 
-if __name__ == "__main__":  # everything in main block due to multiprocessing errors
+def socket_callback(bm, symbol, msg):
+    if msg["e"] == "error":
+        # close and restart the socket
+        print(f"websocket error encountered: {msg['e']}")
+        print(f"attempting restart...")
+        bm.stop_socket(symbol)
+        bm.start_symbol_ticker_socket(
+            symbol=symbol, callback=lambda msg: socket_callback(bm, symbol, msg)
+        )
+    else:
+        t.trade(float(msg["c"]))
+
+
+# everything in main block due to multiprocessing "fork" behaviour being weird
+if __name__ == "__main__":
     args = parser.parse_args()
-    symbol = args.symbol
+    if bool(args.symbol) == bool(args.file):
+        parser.print_help(sys.stderr)
+        print(
+            "either a symbol (e.g. DOGEBTC) or a file path to a .npy file must be supplied"
+        )
+        exit(1)
 
-    t = Trader(async_optimization=True, optimization_period=args.o)
-
-    cfg = toml.load("../api/configuration.toml")
-    pkey = cfg["auth"]["pkey"]
-    skey = cfg["auth"]["skey"]
-
-    def cb(bm, symbol, msg):
-        if msg["e"] == "error":
-            # close and restart the socket
-            print(f"websocket error encountered: {msg['e']}")
-            print(f"attempting restart...")
-            bm.stop_socket(symbol)
-            bm.start_symbol_ticker_socket(
-                symbol=symbol, callback=lambda msg: cb(bm, symbol, msg)
+    if args.symbol:
+        symbol = args.symbol
+        cfg = toml.load("../api/configuration.toml")
+        pkey = cfg["auth"]["pkey"]
+        skey = cfg["auth"]["skey"]
+        client = Client(skey, pkey)
+        if symbol.upper() not in [
+            c["symbol"] for c in client.get_exchange_info()["symbols"]
+        ]:
+            print(
+                "symbol not found in binance exchange - double check for typos, and that the symbol is supported"
             )
-        else:
-            t.trade(float(msg["c"]))
+            exit(1)
 
-    print(f"starting socket for {symbol}...")
-    bm = ThreadedWebsocketManager(api_key=pkey, api_secret=skey)
-    bm.start()
-    bm.start_symbol_ticker_socket(
-        symbol=symbol, callback=lambda msg: cb(bm, symbol, msg)
-    )
+        t = Trader(async_optimization=True, optimization_period=args.o)
 
-    print("socket started\n")
+        print(f"starting socket for {args.symbol}...")
+        bm = ThreadedWebsocketManager(api_key=pkey, api_secret=skey)
+        bm.start()
+        bm.start_symbol_ticker_socket(
+            symbol=symbol.upper(),
+            callback=lambda msg: socket_callback(bm, symbol.upper(), msg),
+        )
+        print("socket started\n")
 
-    try:
-        while True:
-            print("\n" + time.ctime())
-            print(f"Price History Len: {len(t.price_history)}")
-            print(f"base: {t.base}\t\tquote: {t.quote}")
-            print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
-            time.sleep(args.p)
+        try:
+            while True:
+                print("\n" + time.ctime())
+                print(f"Price History Len: {len(t.price_history)}")
+                print(f"base: {t.base}\t\tquote: {t.quote}")
+                print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
+                time.sleep(args.p)
+        except KeyboardInterrupt:
+            # halt the worker pool for optimization
+            t.tr._pool.terminate()
+            t.tr._pool.join()
+        finally:
+            # save data?
+            res = input("save price history? [y/n] ")
+            if res.lower() == "y":
+                datestamp = time.ctime().replace(" ", "_")
+                np.save(
+                    f"../price_history/{symbol}_{datestamp}_{len(t.price_history)}s",
+                    np.asarray(t.price_history),
+                )
 
-    except KeyboardInterrupt:
-        # halt the worker pool for optimization
-        t.tr._pool.terminate()
-        t.tr._pool.join()
+            # you gotta press ctrl-c again
+            print("ctrl-c")
 
-        # save data?
-        res = input("save price history? [y/n] ")
-        if res.lower() == "y":
-            datestamp = time.ctime().replace(" ", "_")
-            np.save(
-                f"../price_history/{symbol}_{datestamp}_{len(t.price_history)}s",
-                np.asarray(t.price_history),
-            )
+    elif args.file:
+        t = Trader(async_optimization=False, optimization_period=args.o)
 
-        # you gotta press ctrl-c again
-        print("ctrl-c")
+        print(f"loading {args.file}...")
+        data = np.load(args.file, allow_pickle=True)
+
+        for i, p in enumerate(data):
+            t.trade(p)
+
+            if i % args.p == 0:
+                print("\n" + time.ctime())
+                print(f"Price History Len: {len(t.price_history)}")
+                print(f"base: {t.base}\t\tquote: {t.quote}")
+                print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
+
+    else:
+        print("how the heck did you get here? submit an issue for this please!!!")

@@ -11,15 +11,15 @@ from ema_strategy import EMA_strategy
 
 
 plt.rcParams["figure.dpi"] = 200
-plt.rcParams["figure.figsize"] = (20,10)
-plt.rcParams.update({'font.size': 18})
+plt.rcParams["figure.figsize"] = (20, 10)
+plt.rcParams.update({"font.size": 18})
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     t = Trader()
 
-    history = pd.read_csv('../historical_data/binance_DOGEBTC_1m.csv')
-    brices = history['open'].tolist()
+    history = pd.read_csv("../historical_data/binance_DOGEBTC_1m.csv")
+    brices = history["open"].tolist()
 
     values = []
 
