@@ -61,9 +61,6 @@ class Trader:
         self.quote_arr.append(self.quote)
 
         if len(self.price_history) % self.optimization_period == 0:
-            with open("PARAM_RUN", "a") as f:
-                f.write(f"{len(self.price_history)}\n")
-
             if self.async_optimization:
                 self.tr.optimize_multiprocess_async(
                     self.price_history[-self.optimization_period : -1],

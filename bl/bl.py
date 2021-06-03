@@ -49,13 +49,6 @@ parser.add_argument(
     help="number of prices over which EMA is optimized",
     default=1000,
 )
-# parser.add_argument(
-#     "-a",
-#     metavar="--async-optimization",
-#     type=bool,
-#     action="store_true",
-#     help="whether to use async or serial optimization - default is async for symbols (ie websockets) and serial for files",
-# )
 
 
 def socket_callback(bm, symbol, msg):
@@ -150,14 +143,12 @@ if __name__ == "__main__":
                     print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
         except:
             pass
-        finally:
-            import matplotlib.pyplot as plt
 
-            print(len(t.price_history), len(val))
-            fig, axs = plt.subplots(2)
-            axs[0].plot(t.price_history)
-            axs[1].plot(val)
-            plt.show()
+        import matplotlib.pyplot as plt
+        fig, axs = plt.subplots(2)
+        axs[0].plot(t.price_history)
+        axs[1].plot(val)
+        plt.show()
 
     else:
         print("how the heck did you get here? submit an issue for this please!!!")

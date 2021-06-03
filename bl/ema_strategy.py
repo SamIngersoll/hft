@@ -26,6 +26,7 @@ class EMA_strategy:
         self._prev_ema_val_1: Optional[float] = None  # default initial EMA value to 0
         self._prev_ema_val_2: Optional[float] = None  # default initial EMA value to 0
         self._pool = multiprocessing.Pool(multiprocessing.cpu_count() - 1)
+        self._verbose = verbose
 
     def ema(
         self,
@@ -89,7 +90,7 @@ class EMA_strategy:
         period_range_2: int,
         best_score: Optional[float] = None,
     ):
-        if self.verbose:
+        if self._verbose:
             print_str = f"SET PARAMS: {ema_smoothing_const_1} {period_range_1} {ema_smoothing_const_1} {period_range_2}"
             if best_score is not None:
                 print_str += f"\nSCORE: {best_score}"
