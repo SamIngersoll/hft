@@ -13,7 +13,7 @@ class EMA_strategy:
     - Easier management of previous EMA values, prices values, e.t.c.
     """
 
-    def __init__(self, ema_smoothing_const: float = 0.1, period_range: int = 2):
+    def __init__(self, ema_smoothing_const: float = 0.1, period_range: int = 3, verbose: bool = False):
         """
         params:
             ema_smoothing_const - constant, determined by optimize. 0.1 is assumed to be good initial guess
@@ -22,7 +22,7 @@ class EMA_strategy:
         self.ema_smoothing_const_1: float = ema_smoothing_const
         self.ema_smoothing_const_2: float = ema_smoothing_const
         self.period_range_1: int = period_range
-        self.period_range_2: int = period_range - 1
+        self.period_range_2: int = period_range // 2
         self._prev_ema_val_1: Optional[float] = None  # default initial EMA value to 0
         self._prev_ema_val_2: Optional[float] = None  # default initial EMA value to 0
         self._pool = multiprocessing.Pool(multiprocessing.cpu_count() - 1)
@@ -89,10 +89,11 @@ class EMA_strategy:
         period_range_2: int,
         best_score: Optional[float] = None,
     ):
-        print_str = f"SET PARAMS: {ema_smoothing_const_1} {period_range_1} {ema_smoothing_const_1} {period_range_2}"
-        if best_score is not None:
-            print_str += f"\nSCORE: {best_score}"
-        print(print_str)
+        if self.verbose:
+            print_str = f"SET PARAMS: {ema_smoothing_const_1} {period_range_1} {ema_smoothing_const_1} {period_range_2}"
+            if best_score is not None:
+                print_str += f"\nSCORE: {best_score}"
+            print(print_str)
 
         self.ema_smoothing_const_1: float = ema_smoothing_const_1
         self.ema_smoothing_const_2: float = ema_smoothing_const_2

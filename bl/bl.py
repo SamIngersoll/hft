@@ -87,6 +87,7 @@ if __name__ == "__main__":
         pkey = cfg["auth"]["pkey"]
         skey = cfg["auth"]["skey"]
         client = Client(skey, pkey)
+
         if symbol.upper() not in [
             c["symbol"] for c in client.get_exchange_info()["symbols"]
         ]:
@@ -136,14 +137,27 @@ if __name__ == "__main__":
         print(f"loading {args.file}...")
         data = np.load(args.file, allow_pickle=True)
 
-        for i, p in enumerate(data):
-            t.trade(p)
+        val = []
+        try:
+            for i, p in enumerate(data):
+                t.trade(p)
+                val.append(t.base + t.quote)
 
-            if i % args.p == 0:
-                print("\n" + time.ctime())
-                print(f"Price History Len: {len(t.price_history)}")
-                print(f"base: {t.base}\t\tquote: {t.quote}")
-                print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
+                if i % args.p == 0:
+                    print("\n" + time.ctime())
+                    print(f"Price History Len: {len(t.price_history)}")
+                    print(f"base: {t.base}\t\tquote: {t.quote}")
+                    print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
+        except:
+            pass
+        finally:
+            import matplotlib.pyplot as plt
+
+            print(len(t.price_history), len(val))
+            fig, axs = plt.subplots(2)
+            axs[0].plot(t.price_history)
+            axs[1].plot(val)
+            plt.show()
 
     else:
         print("how the heck did you get here? submit an issue for this please!!!")
