@@ -13,8 +13,8 @@ if len(sys.argv) < 2:
 for f in sys.argv[1:]:
     try:
         data = np.load(f, allow_pickle=True)
-    except OSError:
-        print(f"{f} not picklable - skipping...")
+    except OSError as e:
+        print(f"error reading {f}: skipping...\n{e}")
         continue
     plt.plot(data)
     plt.xlabel("time")

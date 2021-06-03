@@ -47,6 +47,7 @@ Right now, it is not generalized/modularized.
 
 - How does return change as a function of the optimization window?
 - Does optimizing over multiple currencies improve results?
+- How well does an optmization "best score" predict next return over opt. periods?
 
 
 ## Limitations
