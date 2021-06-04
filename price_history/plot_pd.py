@@ -17,6 +17,7 @@ for f in sys.argv[1:]:
         print(f"error reading {f}: skipping...\n{e}")
         continue
     plt.plot(data)
+    plt.title(f)
     plt.xlabel("time")
     plt.ylabel("price")
     plt.show()

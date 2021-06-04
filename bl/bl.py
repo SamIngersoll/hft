@@ -109,8 +109,9 @@ if __name__ == "__main__":
                 time.sleep(args.p)
         except KeyboardInterrupt:
             # halt the worker pool for optimization
-            t.tr._pool.terminate()
+            t.tr._pool.close()
             t.tr._pool.join()
+            t.tr._pool.terminate()
         finally:
             # save data?
             res = input("save price history? [y/n] ")
@@ -145,6 +146,7 @@ if __name__ == "__main__":
             pass
 
         import matplotlib.pyplot as plt
+
         fig, axs = plt.subplots(2)
         axs[0].plot(t.price_history)
         axs[1].plot(val)
