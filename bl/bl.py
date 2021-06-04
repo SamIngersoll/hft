@@ -13,6 +13,7 @@ import sys
 import argparse
 import time, toml
 import numpy as np
+import matplotlib.pyplot as plt
 
 from trader import Trader
 
@@ -23,31 +24,37 @@ from binance import ThreadedWebsocketManager
 parser = argparse.ArgumentParser("beginner's luck")
 parser.add_argument(
     "-s",
-    metavar="--symbol",
+    "--symbol",
     type=str,
     help="ticker symbol (e.g. DOGEBTC) does not error for invalid symbols",
     dest="symbol",
 )
 parser.add_argument(
     "-f",
-    metavar="--file",
+    "--file",
     type=str,
     help="path to .npy file - should be array of prices over time",
     dest="file",
 )
 parser.add_argument(
     "-p",
-    metavar="--print-period",
+    "--print_period",
     type=float,
     help="period between printing info to stdout [s]",
     default=60,
 )
 parser.add_argument(
     "-o",
-    metavar="--optimzation-period",
+    "--optimzation_period",
     type=int,
     help="number of prices over which EMA is optimized",
     default=1000,
+)
+parser.add_argument(
+    "-t",
+    "--test",
+    help="run socket on testnet instead of real net",
+    action="store_false",
 )
 
 
@@ -75,28 +82,28 @@ if __name__ == "__main__":
         exit(1)
 
     if args.symbol:
-        symbol = args.symbol
+        symbol = args.symbol.upper()
         cfg = toml.load("../api/configuration.toml")
         pkey = cfg["auth"]["pkey"]
         skey = cfg["auth"]["skey"]
         client = Client(skey, pkey)
 
-        if symbol.upper() not in [
-            c["symbol"] for c in client.get_exchange_info()["symbols"]
-        ]:
+        if symbol not in [c["symbol"] for c in client.get_exchange_info()["symbols"]]:
             print(
                 "symbol not found in binance exchange - double check for typos, and that the symbol is supported"
             )
             exit(1)
 
-        t = Trader(async_optimization=True, optimization_period=args.o)
+        t = Trader(
+            None, async_optimization=True, optimization_period=args.optimzation_period
+        )
 
-        print(f"starting socket for {args.symbol}...")
+        print(f"starting socket for {symbol}...")
         bm = ThreadedWebsocketManager(api_key=pkey, api_secret=skey)
         bm.start()
         bm.start_symbol_ticker_socket(
-            symbol=symbol.upper(),
-            callback=lambda msg: socket_callback(bm, symbol.upper(), msg),
+            symbol=symbol,
+            callback=lambda msg: socket_callback(bm, symbol, msg),
         )
         print("socket started\n")
 
@@ -106,7 +113,7 @@ if __name__ == "__main__":
                 print(f"Price History Len: {len(t.price_history)}")
                 print(f"base: {t.base}\t\tquote: {t.quote}")
                 print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
-                time.sleep(args.p)
+                time.sleep(args.print_period)
         except KeyboardInterrupt:
             # halt the worker pool for optimization
             t.tr._pool.close()
@@ -125,27 +132,27 @@ if __name__ == "__main__":
             # you gotta press ctrl-c again
             print("ctrl-c")
 
+            transfer = client.transfer_dust(asset="BNZ")
+
     elif args.file:
-        t = Trader(async_optimization=False, optimization_period=args.o)
+        t = Trader(
+            None, async_optimization=False, optimization_period=args.optimzation_period
+        )
 
         print(f"loading {args.file}...")
         data = np.load(args.file, allow_pickle=True)
 
-        val = []
-        try:
-            for i, p in enumerate(data):
-                t.trade(p)
-                val.append(t.base + t.quote)
+        for i, p in enumerate(data):
+            t.trade(p)
+            val.append(t.base + t.quote)
 
-                if i % args.p == 0:
-                    print("\n" + time.ctime())
-                    print(f"Price History Len: {len(t.price_history)}")
-                    print(f"base: {t.base}\t\tquote: {t.quote}")
-                    print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
-        except:
-            pass
+            if i % args.print_period == 0:
+                print("\n" + time.ctime())
+                print(f"Price History Len: {len(t.price_history)}")
+                print(f"base: {t.base}\t\tquote: {t.quote}")
+                print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
 
-        import matplotlib.pyplot as plt
+        val = np.asarray(t.base_arr) + np.asarray(t.quote_arr)
 
         fig, axs = plt.subplots(2)
         axs[0].plot(t.price_history)

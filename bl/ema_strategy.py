@@ -13,7 +13,12 @@ class EMA_strategy:
     - Easier management of previous EMA values, prices values, e.t.c.
     """
 
-    def __init__(self, ema_smoothing_const: float = 0.1, period_range: int = 3, verbose: bool = False):
+    def __init__(
+        self,
+        ema_smoothing_const: float = 0.1,
+        period_range: int = 3,
+        verbose: bool = False,
+    ):
         """
         params:
             ema_smoothing_const - constant, determined by optimize. 0.1 is assumed to be good initial guess

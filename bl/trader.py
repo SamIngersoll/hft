@@ -1,14 +1,20 @@
 from order_side import OrderSide
 from ema_strategy import EMA_strategy
 
+from binance.client import Client
+
 
 class Trader:
     def __init__(
         self,
+        client: Client,
+        symbol: str,
         optimization_period: int = 5000,
         async_optimization: bool = False,
         verbose: bool = False,
     ):
+        self.client = (client,)
+        self.symbol = (symbol,)
         self.base_arr = []
         self.quote_arr = []
         self.price_history = []
@@ -75,3 +81,18 @@ class Trader:
         if traded:
             return action
         return OrderSide.NO_OP
+
+    def build_limit_buy(self, price: float):
+
+        self.client.order_limit_buy(
+            symbol=self.symbol,
+            quantity=QUANTITY,
+            price=price,
+        )
+
+    def build_limit_sell(self, price: float):
+        self.client.order_limit_sell(
+            symbol=self.symbol,
+            quantity=QUANTITY,
+            price=price,
+        )
