@@ -48,13 +48,13 @@ parser.add_argument(
     "--optimzation_period",
     type=int,
     help="number of prices over which EMA is optimized",
-    default=1000,
+    default=1500,
 )
 parser.add_argument(
-    "-t",
-    "--test",
-    help="run socket on testnet instead of real net",
-    action="store_false",
+    "-L",
+    "--LIVE",
+    help="run socket on live market instead of test net",
+    action="store_true",
 )
 
 
@@ -74,20 +74,33 @@ def socket_callback(bm, symbol, msg):
 # everything in main block due to multiprocessing "fork" behaviour being weird
 if __name__ == "__main__":
     args = parser.parse_args()
+
+    # We need either a symbol (-s) or a file (-f)
     if bool(args.symbol) == bool(args.file):
         parser.print_help(sys.stderr)
         print(
-            "either a symbol (e.g. DOGEBTC) or a file path to a .npy file must be supplied"
+            "\neither a symbol (e.g. DOGEBTC) or a file path to a .npy file must be supplied"
         )
         exit(1)
 
-    if args.symbol:
-        symbol = args.symbol.upper()
-        cfg = toml.load("../api/configuration.toml")
+    cfg = toml.load("../api/configuration.toml")
+    if args.LIVE:
+        confirmation_str = "are you SURE you want to trade live? actual money will be traded: [yes/no] "
+        if input(confirmation_str) != "yes":
+            print("good choice!")
+            exit(1)
+        print("creating live client...")
         pkey = cfg["auth"]["pkey"]
         skey = cfg["auth"]["skey"]
-        client = Client(skey, pkey)
+        client = Client(pkey, skey)
+    else:
+        print("creating test client...")
+        pkey = cfg["testnet"]["pkey"]
+        skey = cfg["testnet"]["skey"]
+        client = Client(pkey, skey, testnet=True)
 
+    if args.symbol:
+        symbol = args.symbol.upper()
         if symbol not in [c["symbol"] for c in client.get_exchange_info()["symbols"]]:
             print(
                 "symbol not found in binance exchange - double check for typos, and that the symbol is supported"
@@ -95,7 +108,10 @@ if __name__ == "__main__":
             exit(1)
 
         t = Trader(
-            None, async_optimization=True, optimization_period=args.optimzation_period
+            symbol,
+            client,
+            async_optimization=True,
+            optimization_period=args.optimzation_period,
         )
 
         print(f"starting socket for {symbol}...")
@@ -111,32 +127,39 @@ if __name__ == "__main__":
             while True:
                 print("\n" + time.ctime())
                 print(f"Price History Len: {len(t.price_history)}")
-                print(f"base: {t.base}\t\tquote: {t.quote}")
+                print(f"base: {t.base_quantity}\t\tquote: {t.quote_quantity}")
                 print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
                 time.sleep(args.print_period)
         except KeyboardInterrupt:
-            # halt the worker pool for optimization
-            t.tr._pool.close()
-            t.tr._pool.join()
-            t.tr._pool.terminate()
-        finally:
-            # save data?
-            res = input("save price history? [y/n] ")
-            if res.lower() == "y":
-                datestamp = time.ctime().replace(" ", "_")
-                np.save(
-                    f"../price_history/{symbol}_{datestamp}_{len(t.price_history)}s",
-                    np.asarray(t.price_history),
-                )
+            # halt the worker pool
+            t.strategy._pool.terminate()
+            t.strategy._pool.join()
+        else:
+            t.strategy._pool.close()
+            t.strategy._pool.join()
 
-            # you gotta press ctrl-c again
-            print("ctrl-c")
+        # save data?
+        res = input("save price history? [y/n] ")
+        if res.lower() == "y":
+            datestamp = time.ctime().replace(" ", "_")
+            np.save(
+                f"../price_history/{symbol}_{datestamp}_{len(t.price_history)}s",
+                np.asarray(t.price_history),
+            )
 
-            transfer = client.transfer_dust(asset="BNZ")
+        # you gotta press ctrl-c again, i think cause i am halting the worker pool wrong
+        print("ctrl-c")
+        # Transfer dust? somethign like client.transfer_dust(asset="BNB")
 
+    # This is currently broken - need to create a trader
+    # class for just file backtrading. Actually, could just
+    # hop back some commits and yoink that trader class.
     elif args.file:
         t = Trader(
-            None, async_optimization=False, optimization_period=args.optimzation_period
+            symbol,
+            client,
+            async_optimization=False,
+            optimization_period=args.optimzation_period,
         )
 
         print(f"loading {args.file}...")
@@ -148,14 +171,13 @@ if __name__ == "__main__":
 
             if i % args.print_period == 0:
                 print("\n" + time.ctime())
-                print(f"Price History Len: {len(t.price_history)}")
                 print(f"base: {t.base}\t\tquote: {t.quote}")
                 print(f"buys: {t.num_buys}\t\tsells: {t.num_sells}\n")
 
         val = np.asarray(t.base_arr) + np.asarray(t.quote_arr)
 
         fig, axs = plt.subplots(2)
-        axs[0].plot(t.price_history)
+        axs[0].plot(data)
         axs[1].plot(val)
         plt.show()
 
